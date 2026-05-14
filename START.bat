@@ -1,0 +1,9 @@
+@echo off
+echo Starting Backend...
+start "BACKEND" cmd /k "cd /d C:\Projects\Micro-Loan Worthiness System && venv\Scripts\activate && python -m uvicorn backend.app.main:app --reload"
+timeout /t 5 /nobreak
+echo Building Frontend...
+start "FRONTEND" cmd /k "cd /d C:\Projects\Micro-Loan Worthiness System\frontend && npm run build && npx serve -s build -l 3000"
+echo Done! Opening browser in 15 seconds...
+timeout /t 15 /nobreak
+start chrome http://localhost:3000
