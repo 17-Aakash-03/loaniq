@@ -1,0 +1,22 @@
+/* ── Mobile Responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Navbar */
+  nav {
+    padding: 0 12px !important;
+    height: auto !important;
+    flex-wrap: wrap !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    gap: 8px !important;
+  }
+
+  /* Hide some nav items on very small screens */
+  @media (max-width: 480px) {
+    nav span[style*="MICRO-LOAN"] {
+      font-size: 11px !important;
+      letter-spacing: 1px !important;
+      margin-right: 8px !important;
+    }
+  }
+}
