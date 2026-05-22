@@ -220,10 +220,6 @@ Traditional credit scoring requires formal financial history. LoanIQ enables mic
 
 ---
 
-## 📄 License
-
-MIT License — free to use for educational purposes.
-
 ---
 
 <div align="center">
