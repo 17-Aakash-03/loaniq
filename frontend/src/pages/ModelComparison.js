@@ -498,10 +498,11 @@ export default function ModelComparison() {
 
         {/* Footer */}
         <div style={{ marginTop:'32px', paddingTop:'16px', borderTop:`1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
-          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>MICRO-LOAN.AI › MODEL COMPARISON</span>
+          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>LOANIQ › MODEL COMPARISON</span>
           <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>{data.models.length} MODELS · TRANSFORMER+GAT WINNER</span>
         </div>
       </div>
     </div>
   );
 }
+

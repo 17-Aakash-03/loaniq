@@ -106,7 +106,7 @@ export default function History() {
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.download = `MicroLoan_History_${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = url; link.download = `LoanIQ_History_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link); link.click();
     document.body.removeChild(link); URL.revokeObjectURL(url);
   };
@@ -424,10 +424,11 @@ export default function History() {
         )}
 
         <div style={{ marginTop:'32px', paddingTop:'16px', borderTop:`1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
-          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>MICRO-LOAN.AI › CREDIT LOG ARCHIVE</span>
+          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>LOANIQ › CREDIT LOG ARCHIVE</span>
           <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>{records.length} TOTAL RECORDS</span>
         </div>
       </div>
     </div>
   );
 }
+

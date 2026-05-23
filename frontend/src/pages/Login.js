@@ -390,12 +390,12 @@ export default function Login() {
 
           <div style={{ position:'relative', display:'inline-block', marginBottom:'8px' }}>
             <h1 style={{ fontSize:'26px', fontWeight:'900', color:cyan, margin:0, letterSpacing:'4px', textTransform:'uppercase', animation:isDark?'neonPulse 3s ease-in-out infinite':'none', fontFamily:"'Courier New',monospace" }}>
-              MICRO-LOAN.AI
+              LOANIQ
             </h1>
             {glitching && isDark && (
               <>
-                <h1 style={{ position:'absolute', top:0, left:0, fontSize:'26px', fontWeight:'900', color:pink,  margin:0, letterSpacing:'4px', textTransform:'uppercase', animation:'glitch1 0.3s steps(1) infinite', fontFamily:"'Courier New',monospace", pointerEvents:'none' }}>MICRO-LOAN.AI</h1>
-                <h1 style={{ position:'absolute', top:0, left:0, fontSize:'26px', fontWeight:'900', color:green, margin:0, letterSpacing:'4px', textTransform:'uppercase', animation:'glitch2 0.3s steps(1) infinite', fontFamily:"'Courier New',monospace", pointerEvents:'none' }}>MICRO-LOAN.AI</h1>
+                <h1 style={{ position:'absolute', top:0, left:0, fontSize:'26px', fontWeight:'900', color:pink,  margin:0, letterSpacing:'4px', textTransform:'uppercase', animation:'glitch1 0.3s steps(1) infinite', fontFamily:"'Courier New',monospace", pointerEvents:'none' }}>LOANIQ</h1>
+                <h1 style={{ position:'absolute', top:0, left:0, fontSize:'26px', fontWeight:'900', color:green, margin:0, letterSpacing:'4px', textTransform:'uppercase', animation:'glitch2 0.3s steps(1) infinite', fontFamily:"'Courier New',monospace", pointerEvents:'none' }}>LOANIQ</h1>
               </>
             )}
           </div>
@@ -642,3 +642,4 @@ export default function Login() {
     </div>
   );
 }
+

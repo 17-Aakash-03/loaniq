@@ -348,7 +348,7 @@ export default function LoanCalculator() {
 
         <div style={{ marginTop:'24px', textAlign:'center' }}>
           <p style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim, margin:0 }}>
-            MICRO-LOAN.AI · LOAN CALCULATOR · FOR INFORMATIONAL PURPOSES ONLY
+            LOANIQ · LOAN CALCULATOR · FOR INFORMATIONAL PURPOSES ONLY
           </p>
         </div>
       </div>

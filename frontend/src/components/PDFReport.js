@@ -86,8 +86,8 @@ export default function PDFReport({ result, userName, btnStyle }) {
     doc.setLineWidth(0.5);
     doc.roundedRect(margin, y, 18, 18, 3, 3, 'S');
 
-    text('MICRO',  margin + 22, y + 6,  colors.cyan,   22, 'left', 'bold');
-    text('LOAN',   margin + 22, y + 13, colors.purple, 22, 'left', 'bold');
+    text('LOAN',   margin + 22, y + 6,  colors.cyan,   22, 'left', 'bold');
+    text('IQ',     margin + 22, y + 13, colors.purple, 22, 'left', 'bold');
     text('.AI',    margin + 22, y + 20, colors.pink,   22, 'left', 'bold');
 
     text('Credit Analysis Report',
@@ -332,7 +332,7 @@ export default function PDFReport({ result, userName, btnStyle }) {
     // ── FOOTER ────────────────────────────────────────────────
     rect(0, H-14, W, 14, colors.card);
     line(0, H-14, W, H-14, colors.cyan, 0.5);
-    text('Micro-Loan Worthiness System',                margin,   H-7,  colors.cyan,  7,   'left',   'bold');
+    text('LoanIQ',                margin,   H-7,  colors.cyan,  7,   'left',   'bold');
     text('Powered by Transformer + GAT Neural Network', W/2,      H-9,  colors.dim,   5.5, 'center');
     text('AUC-ROC: 0.9618  |  F1: 0.9142',             W/2,      H-5,  colors.muted, 5,   'center');
     text(
@@ -340,7 +340,7 @@ export default function PDFReport({ result, userName, btnStyle }) {
       W - margin, H-7, colors.muted, 5.5, 'right'
     );
 
-    doc.save(`MicroLoan_Report_RPT-${reportId}.pdf`);
+    doc.save(`LoanIQ_Report_RPT-${reportId}.pdf`);
   };
 
   const defaultStyle = {

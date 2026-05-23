@@ -399,10 +399,11 @@ export default function EDA() {
 
         {/* Footer */}
         <div style={{ marginTop:'32px', paddingTop:'16px', borderTop:`1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
-          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>MICRO-LOAN.AI › EDA CONSOLE</span>
+          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>LOANIQ › EDA CONSOLE</span>
           <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>TRANSFORMER + GAT · AUC 0.9618</span>
         </div>
       </div>
     </div>
   );
 }
+

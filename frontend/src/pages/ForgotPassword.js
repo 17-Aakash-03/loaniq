@@ -59,7 +59,7 @@ export default function ForgotPassword() {
             {token ? 'RESET PASSWORD' : 'FORGOT PASSWORD'}
           </h1>
           <p style={{ fontSize:'10px', color:'rgba(255,255,255,0.25)', letterSpacing:'2px', margin:'8px 0 0', textTransform:'uppercase' }}>
-            MICRO-LOAN.AI SECURITY
+            LOANIQ SECURITY
           </p>
         </div>
 
@@ -142,3 +142,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+

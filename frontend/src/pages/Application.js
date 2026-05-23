@@ -638,10 +638,11 @@ export default function Application() {
         {/* Footer */}
         <div style={{ marginTop:'20px', textAlign:'center' }}>
           <p style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim, margin:0, textTransform:'uppercase' }}>
-            MICRO-LOAN.AI · NEURAL CREDIT INTELLIGENCE · AUC 0.9618
+            LOANIQ · NEURAL CREDIT INTELLIGENCE · AUC 0.9618
           </p>
         </div>
       </div>
     </div>
   );
 }
+

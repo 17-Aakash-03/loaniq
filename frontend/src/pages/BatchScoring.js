@@ -408,10 +408,11 @@ Vikram Patel,600,3,6000,1,80,18,0.75`;
         )}
 
         <div style={{ marginTop:'32px', paddingTop:'16px', borderTop:`1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
-          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>MICRO-LOAN.AI › BATCH SCORING</span>
+          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>LOANIQ › BATCH SCORING</span>
           <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>TRANSFORMER + GAT · AUC 0.9618</span>
         </div>
       </div>
     </div>
   );
 }
+

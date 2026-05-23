@@ -526,10 +526,11 @@ export default function Admin() {
 
         {/* Footer */}
         <div style={{ marginTop:'32px', paddingTop:'16px', borderTop:`1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
-          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>MICRO-LOAN.AI › ADMIN CONSOLE</span>
+          <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>LOANIQ › ADMIN CONSOLE</span>
           <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim }}>{data.total_users} USERS · {data.total_applications} APPLICATIONS</span>
         </div>
       </div>
     </div>
   );
 }
+

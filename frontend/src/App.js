@@ -106,7 +106,7 @@ function NavBar() {
           flexShrink:    0,
           transition:    'all 0.3s ease',
         }}>
-        {isMobile ? 'ML.AI' : 'MICRO-LOAN.AI'}
+        {isMobile ? 'ML.AI' : 'LOANIQ'}
       </span>
 
       {/* Nav links */}
