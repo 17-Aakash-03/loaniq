@@ -31,7 +31,7 @@ export default function EDA() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { navigate('/'); return; }
-    axios.get('https://loaniq-backend-6dmd.onrender.com/eda/stats', {
+    axios.get('http://127.0.0.1:8000/eda/stats', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => { setData(res.data); setMounted(true); })
@@ -406,4 +406,5 @@ export default function EDA() {
     </div>
   );
 }
+
 

@@ -24,7 +24,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setLoading(true); setError(''); setMsg('');
     try {
-      await axios.post(`https://loaniq-backend-6dmd.onrender.com/auth/forgot-password?email=${encodeURIComponent(email)}`);
+      await axios.post(`http://127.0.0.1:8000/auth/forgot-password?email=${encodeURIComponent(email)}`);
       setMsg('Reset link sent! Check your email inbox.');
       setDone(true);
     } catch (err) {
@@ -40,7 +40,7 @@ export default function ForgotPassword() {
     if (password.length < 6)  { setError('Password must be at least 6 characters.'); return; }
     setLoading(true); setError(''); setMsg('');
     try {
-      await axios.post(`https://loaniq-backend-6dmd.onrender.com/auth/reset-password?token=${token}&new_password=${encodeURIComponent(password)}`);
+      await axios.post(`http://127.0.0.1:8000/auth/reset-password?token=${token}&new_password=${encodeURIComponent(password)}`);
       setMsg('Password reset successfully!');
       setTimeout(() => navigate('/'), 2000);
     } catch (err) {
@@ -142,4 +142,5 @@ export default function ForgotPassword() {
     </div>
   );
 }
+
 

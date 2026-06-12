@@ -33,7 +33,7 @@ export default function Admin() {
     if (!token) { navigate('/'); return; }
     if (userRole !== 'admin') { navigate('/apply'); return; }
 
-    axios.get('https://loaniq-backend-6dmd.onrender.com/admin/stats', {
+    axios.get('http://127.0.0.1:8000/admin/stats', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => {
@@ -83,7 +83,7 @@ export default function Admin() {
     setDeleting(userId);
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`https://loaniq-backend-6dmd.onrender.com/admin/user/${userId}`, {
+      await axios.delete(`http://127.0.0.1:8000/admin/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchStats();
@@ -533,4 +533,5 @@ export default function Admin() {
     </div>
   );
 }
+
 

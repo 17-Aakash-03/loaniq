@@ -32,7 +32,7 @@ export default function History() {
 
   const fetchHistory = () => {
     if (!token) { navigate('/'); return; }
-    axios.get('https://loaniq-backend-6dmd.onrender.com/history', {
+    axios.get('http://127.0.0.1:8000/history', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => { setRecords(res.data); setMounted(true); })
@@ -74,7 +74,7 @@ export default function History() {
   const handleDelete = async (id) => {
     setDeleting(id);
     try {
-      await axios.delete(`https://loaniq-backend-6dmd.onrender.com/history/${id}`, {
+      await axios.delete(`http://127.0.0.1:8000/history/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRecords(prev => prev.filter(r => r.id !== id));
@@ -86,7 +86,7 @@ export default function History() {
   const handleDeleteAll = async () => {
     setDeletingAll(true);
     try {
-      await axios.delete('https://loaniq-backend-6dmd.onrender.com/history', {
+      await axios.delete('http://127.0.0.1:8000/history', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRecords([]); setExpanded(null); setConfirmAll(false);
@@ -431,4 +431,5 @@ export default function History() {
     </div>
   );
 }
+
 

@@ -3,32 +3,38 @@
 @tailwind utilities;
 
 /* Force the app to take up the full screen */
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
 }
 
 /* Theme transitions */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 /* Light mode overrides */
 body[data-theme="light"] {
   background: #f0f4f8 !important;
-  color: rgba(0,20,40,0.85) !important;
+  color: rgba(0, 20, 40, 0.85) !important;
 }
 
 /* Scrollbar dark */
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(0,255,247,0.2);
+  background: rgba(0, 255, 247, 0.2);
   border-radius: 3px;
 }
 
@@ -52,15 +58,50 @@ body[data-theme="dark"] {
 }
 
 /* Smooth transitions everywhere */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,255,247,0.2); border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 247, 0.2);
+  border-radius: 3px;
+}
 
 body[data-theme="light"] ::-webkit-scrollbar-thumb {
   background: rgba(0, 100, 180, 0.2);
+}
+
+/* Fix dropdown options visibility */
+select option {
+  background-color: #1e3a5f;
+  color: #ffffff;
+}
+
+body[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: rgba(0, 20, 40, 0.85);
+}
+
+body[data-theme="dark"] select option {
+  background-color: #0a1628;
+  color: #ffffff;
+}
+
+select {
+  color-scheme: dark;
+}
+
+body[data-theme="light"] select {
+  color-scheme: light;
 }

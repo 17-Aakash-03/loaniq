@@ -90,8 +90,8 @@ export default function Results() {
     setWhatIf(initFeatures);
     setWhatIfScore(Math.round(result.score));
     const token = localStorage.getItem('token');
-    axios.get('https://loaniq-backend-6dmd.onrender.com/stats/score-distribution', { headers:{ Authorization:`Bearer ${token}` } }).then(res => setPeerData(res.data)).catch(() => {});
-    axios.get('https://loaniq-backend-6dmd.onrender.com/stats/score-prediction',   { headers:{ Authorization:`Bearer ${token}` } }).then(res => setPredData(res.data)).catch(() => {});
+    axios.get('http://127.0.0.1:8000/stats/score-distribution', { headers:{ Authorization:`Bearer ${token}` } }).then(res => setPeerData(res.data)).catch(() => {});
+    axios.get('http://127.0.0.1:8000/stats/score-prediction',   { headers:{ Authorization:`Bearer ${token}` } }).then(res => setPredData(res.data)).catch(() => {});
     const target   = Math.round(result.score);
     let   current  = 0;
     const step     = target / 60;
@@ -705,4 +705,5 @@ export default function Results() {
     </div>
   );
 }
+
 

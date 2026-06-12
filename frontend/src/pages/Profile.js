@@ -42,7 +42,7 @@ export default function Profile() {
     if (!token) { navigate('/'); return; }
 
     // Fetch profile
-    axios.get('https://loaniq-backend-6dmd.onrender.com/profile', {
+    axios.get('http://127.0.0.1:8000/profile', {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       setProfile(prev => ({
@@ -87,7 +87,7 @@ export default function Profile() {
     setSaving(true); setMsg(''); setError('');
     try {
       const token = localStorage.getItem('token');
-      await axios.put('https://loaniq-backend-6dmd.onrender.com/profile', {
+      await axios.put('http://127.0.0.1:8000/profile', {
         name:             profile.name,
         telegram_chat_id: profile.telegram_chat_id || null,
       }, { headers: { Authorization: `Bearer ${token}` } });
@@ -113,7 +113,7 @@ export default function Profile() {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.put('https://loaniq-backend-6dmd.onrender.com/profile/password', {
+      await axios.put('http://127.0.0.1:8000/profile/password', {
         current_password: passwords.current,
         new_password:     passwords.new,
       }, { headers: { Authorization: `Bearer ${token}` } });
@@ -364,4 +364,5 @@ export default function Profile() {
     </div>
   );
 }
+
 

@@ -139,7 +139,7 @@ export default function Login() {
     setLoading(true);
     try {
       if (isLogin) {
-        const res = await axios.post('https://loaniq-backend-6dmd.onrender.com/login', {
+        const res = await axios.post('http://127.0.0.1:8000/login', {
           email:    emailVal,
           password: passwordVal,
         });
@@ -159,7 +159,7 @@ export default function Login() {
         }
         navigate('/apply');
       } else {
-        await axios.post('https://loaniq-backend-6dmd.onrender.com/register', {
+        await axios.post('http://127.0.0.1:8000/register', {
           name:     nameVal,
           email:    emailVal,
           password: passwordVal,
@@ -642,4 +642,5 @@ export default function Login() {
     </div>
   );
 }
+
 

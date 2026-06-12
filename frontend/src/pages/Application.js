@@ -1,648 +1,852 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useTheme } from '../context/ThemeContext';
 
-const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-const QUARTERS = {
-  Q1: [0,1,2],
-  Q2: [3,4,5],
-  Q3: [6,7,8],
-  Q4: [9,10,11],
-};
+const API = 'http://127.0.0.1:8000';
 
-const defaultMonth = () => ({
-  recharge_amount:    300,
-  recharge_frequency: 2,
-  grocery_spend:      3000,
-  electricity_paid:   1,
-});
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export default function Application() {
-  const navigate  = useNavigate();
-  const canvasRef = useRef(null);
-  const animRef   = useRef(null);
-  const theme     = useTheme();
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  const [mounted,    setMounted]    = useState(false);
-  const [activeQ,    setActiveQ]    = useState('Q1');
-  const [submitting, setSubmitting] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState('');
-  const [error,      setError]      = useState('');
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
+  const cyan = theme.cyan;
+  const purple = theme.purple;
+  const green = theme.green;
+  const amber = theme.amber;
+  const pink = theme.pink;
+
+  const [personal, setPersonal] = useState({
+    age: 30,
+    education_level: 'secondary',
+    employment_type: 'salaried',
+    marital_status: 'married',
+    dependents: 2,
+    work_experience: 5,
+  });
+
+  const [financial, setFinancial] = useState({
+    monthly_income: 15000,
+    monthly_expenditure: 10000,
+    monthly_savings: 2000,
+    has_bank_account: 'yes',
+    has_existing_loans: 'no',
+    existing_loan_emi: 0,
+    num_existing_loans: 0,
+    does_exercise: 'sometimes',
+  });
+
+  const [investment, setInvestment] = useState({
+    does_investment: 'no',
+    investment_type: 'fd',
+    investment_amount: 0,
+    owns_property: 'no',
+    owns_vehicle: 'no',
+  });
+
+  const [riskBehavior, setRiskBehavior] = useState({
+    does_gambling: 'no',
+    gambling_frequency: 'rarely',
+    gambling_result: 'losing',
+    gambling_loss: 0,
+    alcohol_tobacco_spend: 0,
+  });
+
+  const [digital, setDigital] = useState({
+    has_smartphone: 'yes',
+    uses_upi: 'yes',
+    upi_transaction_amount: 3000,
+    has_insurance: 'no',
+    insurance_paid_on_time: 'yes',
+  });
+
+  const [housing, setHousing] = useState({
+    housing_type: 'rented',
+    monthly_rent: 3000,
+  });
 
   const [location, setLocation] = useState({
-    stability:         60,
+    location_stability: 70,
     months_at_address: 24,
   });
 
-  const [months, setMonths] = useState(
-    Array.from({ length:12 }, defaultMonth)
+  const defaultMonth = {
+    recharge_amount: 300,
+    recharge_frequency: 2,
+    electricity_paid: 'yes',
+    grocery_spend: 3000,
+  };
+
+  const [monthlyBehavior, setMonthlyBehavior] = useState(
+    Array(12).fill(null).map(() => ({ ...defaultMonth }))
   );
 
-  const [references, setReferences] = useState([{
-    relationship_type: 'guarantor',
-    trust_score:       0.7,
-  }]);
+  const [references, setReferences] = useState([
+    { trust_score: '0.7', relationship_type: 'guarantor' },
+    { trust_score: '0.6', relationship_type: 'neighbor' },
+  ]);
 
-  const cyan   = theme.cyan;
-  const purple = theme.purple;
-  const green  = theme.green;
-  const pink   = theme.pink;
-  const amber  = theme.amber;
+  const totalSteps = 6;
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) { navigate('/'); return; }
-    setTimeout(() => setMounted(true), 100);
-  }, [navigate]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const W = canvas.width, H = canvas.height;
-    const cols  = Math.floor(W / 13);
-    const drops = Array(cols).fill(1);
-    const chars = '01LOANAPPLYCREDIT';
-    const draw = () => {
-      ctx.fillStyle = theme.isDark ? 'rgba(0,0,8,0.07)' : 'rgba(240,244,248,0.15)';
-      ctx.fillRect(0, 0, W, H);
-      ctx.font = '13px monospace';
-      drops.forEach((y, i) => {
-        const char = chars[Math.floor(Math.random()*chars.length)];
-        ctx.fillStyle = theme.isDark
-          ? `rgba(181,55,242,${Math.random()*0.08+0.02})`
-          : `rgba(0,80,180,${Math.random()*0.05+0.01})`;
-        ctx.fillText(char, i*13, y*13);
-        if (y*13>H && Math.random()>0.975) drops[i]=0;
-        drops[i]++;
-      });
-      animRef.current = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(animRef.current);
-  }, [theme.isDark]);
-
-  const updateMonth = (idx, field, value) => {
-    setMonths(prev => {
-      const next = [...prev];
-      next[idx]  = { ...next[idx], [field]: value };
-      return next;
-    });
+  const inputStyle = {
+    width: '100%', padding: '10px 12px',
+    background: theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+    border: `1px solid ${theme.border}`,
+    borderRadius: '4px', fontSize: '12px', color: theme.text,
+    fontFamily: "'Courier New',monospace", outline: 'none',
+    boxSizing: 'border-box',
   };
 
-  const addReference = () => {
-    if (references.length >= 3) return;
-    setReferences(prev => [...prev, { relationship_type:'neighbor', trust_score:0.5 }]);
+  const selectStyle = {
+    ...inputStyle,
+    cursor: 'pointer',
   };
 
-  const updateReference = (idx, field, value) => {
-    setReferences(prev => {
-      const next = [...prev];
-      next[idx]  = { ...next[idx], [field]: value };
-      return next;
-    });
+  const optionStyle = {
+    background: theme.isDark ? '#1e3a5f' : '#ffffff',
+    color: theme.isDark ? '#ffffff' : '#000000',
+    padding: '8px',
   };
 
-  const removeReference = (idx) => {
-    if (references.length <= 1) return;
-    setReferences(prev => prev.filter((_,i) => i !== idx));
+  const labelStyle = {
+    fontSize: '9px', letterSpacing: '1px', color: theme.textMuted,
+    textTransform: 'uppercase', marginBottom: '4px', display: 'block',
   };
 
-  const loadingMessages = [
-    '⚡ INITIATING NEURAL CREDIT ANALYSIS...',
-    '🧠 PROCESSING 12-MONTH BEHAVIORAL SEQUENCES...',
-    '🔗 RUNNING GRAPH ATTENTION NETWORK...',
-    '📊 COMPUTING SHAP FEATURE IMPORTANCE...',
-    '🎯 CALCULATING CREDIT SCORE...',
-    '✅ FINALIZING REPORT...',
-  ];
+  const sectionStyle = {
+    background: theme.bgCard, border: `1px solid ${theme.border}`,
+    borderRadius: '4px', padding: '20px', marginBottom: '16px',
+  };
+
+  const Field = ({ label, children }) => (
+    <div style={{ marginBottom: '14px' }}>
+      <label style={labelStyle}>{label}</label>
+      {children}
+    </div>
+  );
+
+  const Grid = ({ children, cols = 2 }) => (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : `repeat(${cols}, 1fr)`,
+      gap: '12px',
+    }}>{children}</div>
+  );
+
+  const SectionTitle = ({ color, children }) => (
+    <p style={{
+      fontSize: '10px', color, marginBottom: '12px',
+      fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase',
+    }}>
+      {children}
+    </p>
+  );
 
   const handleSubmit = async () => {
+    setLoading(true);
     setError('');
-    setSubmitting(true);
-    let msgIdx = 0;
-    setLoadingMsg(loadingMessages[0]);
-    const msgInterval = setInterval(() => {
-      msgIdx = (msgIdx + 1) % loadingMessages.length;
-      setLoadingMsg(loadingMessages[msgIdx]);
-    }, 800);
-
     try {
       const token = localStorage.getItem('token');
+
       const payload = {
-        location_stability: location.stability,
-        months_at_address:  location.months_at_address,
-        monthly_behavior:   months.map(m => ({
-          recharge_amount:    m.recharge_amount,
-          recharge_frequency: m.recharge_frequency,
-          grocery_spend:      m.grocery_spend,
-          electricity_paid:   m.electricity_paid,
+        monthly_behavior: monthlyBehavior.map(m => ({
+          ...m,
+          electricity_paid: m.electricity_paid === 'yes',
         })),
         social_references: references.map(r => ({
-          relationship_type: r.relationship_type,
-          trust_score:       r.trust_score,
+          ...r,
+          trust_score: parseFloat(r.trust_score),
         })),
+        location_stability: location.location_stability,
+        months_at_address: location.months_at_address,
+        age: personal.age,
+        education_level: personal.education_level,
+        employment_type: personal.employment_type,
+        marital_status: personal.marital_status,
+        dependents: personal.dependents,
+        work_experience: personal.work_experience,
+        monthly_income: financial.monthly_income,
+        monthly_expenditure: financial.monthly_expenditure,
+        monthly_savings: financial.monthly_savings,
+        has_bank_account: financial.has_bank_account === 'yes',
+        has_existing_loans: financial.has_existing_loans === 'yes',
+        existing_loan_emi: financial.existing_loan_emi,
+        num_existing_loans: financial.num_existing_loans,
+        does_investment: investment.does_investment === 'yes',
+        investment_type: investment.does_investment === 'yes' ? investment.investment_type : 'none',
+        investment_amount: investment.investment_amount,
+        owns_property: investment.owns_property === 'yes',
+        owns_vehicle: investment.owns_vehicle === 'yes',
+        does_gambling: riskBehavior.does_gambling === 'yes',
+        gambling_frequency: riskBehavior.does_gambling === 'yes' ? riskBehavior.gambling_frequency : 'never',
+        gambling_loss: riskBehavior.gambling_loss,
+        alcohol_tobacco_spend: riskBehavior.alcohol_tobacco_spend,
+        has_smartphone: digital.has_smartphone === 'yes',
+        uses_upi: digital.uses_upi === 'yes',
+        upi_transaction_amount: digital.upi_transaction_amount,
+        has_insurance: digital.has_insurance === 'yes',
+        insurance_paid_on_time: digital.insurance_paid_on_time === 'yes',
+        housing_type: housing.housing_type,
+        monthly_rent: housing.monthly_rent,
       };
-      const res = await axios.post('https://loaniq-backend-6dmd.onrender.com/predict', payload, {
+
+      const res = await axios.post(`${API}/predict`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      clearInterval(msgInterval);
       navigate('/results', { state: { result: res.data } });
-    } catch (err) {
-      clearInterval(msgInterval);
-      setError(err.response?.data?.detail || 'Analysis failed. Please try again.');
-      setSubmitting(false);
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Submission failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderStep = () => {
+    switch (step) {
+
+      case 1: return (
+        <div>
+          <h3 style={{ color: cyan, marginBottom: '16px', fontSize: '13px', letterSpacing: '2px' }}>
+            👤 PERSONAL PROFILE
+          </h3>
+          <div style={sectionStyle}>
+            <Grid>
+              <Field label="Age">
+                <input type="number" style={inputStyle} value={personal.age}
+                  onChange={e => setPersonal({ ...personal, age: +e.target.value })}
+                  min={18} max={80} />
+              </Field>
+
+              <Field label="Work Experience (Years)">
+                <input type="number" style={inputStyle} value={personal.work_experience}
+                  onChange={e => setPersonal({ ...personal, work_experience: +e.target.value })}
+                  min={0} max={50} />
+              </Field>
+
+              <Field label="Education Level">
+                <select style={selectStyle} value={personal.education_level}
+                  onChange={e => setPersonal({ ...personal, education_level: e.target.value })}>
+                  <option style={optionStyle} value="illiterate">Illiterate — No formal education</option>
+                  <option style={optionStyle} value="primary">Primary School (Class 1–5)</option>
+                  <option style={optionStyle} value="secondary">Secondary School (Class 6–10)</option>
+                  <option style={optionStyle} value="higher_secondary">Higher Secondary (Class 11–12)</option>
+                  <option style={optionStyle} value="diploma">Diploma / ITI</option>
+                  <option style={optionStyle} value="graduate">Graduate (B.A / B.Sc / B.Com / B.Tech)</option>
+                  <option style={optionStyle} value="postgraduate">Post Graduate (M.A / M.Sc / MBA)</option>
+                  <option style={optionStyle} value="phd">PhD / Doctorate</option>
+                </select>
+              </Field>
+
+              <Field label="Employment Type">
+                <select style={selectStyle} value={personal.employment_type}
+                  onChange={e => setPersonal({ ...personal, employment_type: e.target.value })}>
+                  <option style={optionStyle} value="salaried">Salaried — Government Job</option>
+                  <option style={optionStyle} value="salaried_private">Salaried — Private Job</option>
+                  <option style={optionStyle} value="self_employed">Self Employed — Business Owner</option>
+                  <option style={optionStyle} value="freelancer">Freelancer / Consultant</option>
+                  <option style={optionStyle} value="farmer">Farmer — Agriculture</option>
+                  <option style={optionStyle} value="daily_wage">Daily Wage Worker</option>
+                  <option style={optionStyle} value="street_vendor">Street Vendor / Small Trader</option>
+                  <option style={optionStyle} value="student">Student</option>
+                  <option style={optionStyle} value="homemaker">Homemaker</option>
+                  <option style={optionStyle} value="retired">Retired</option>
+                  <option style={optionStyle} value="unemployed">Unemployed</option>
+                </select>
+              </Field>
+
+              <Field label="Marital Status">
+                <select style={selectStyle} value={personal.marital_status}
+                  onChange={e => setPersonal({ ...personal, marital_status: e.target.value })}>
+                  <option style={optionStyle} value="single">Single — Never Married</option>
+                  <option style={optionStyle} value="married">Married</option>
+                  <option style={optionStyle} value="married_joint">Married — Joint Family</option>
+                  <option style={optionStyle} value="divorced">Divorced</option>
+                  <option style={optionStyle} value="separated">Separated</option>
+                  <option style={optionStyle} value="widowed">Widowed</option>
+                </select>
+              </Field>
+
+              <Field label="Number of Dependents">
+                <input type="number" style={inputStyle} value={personal.dependents}
+                  onChange={e => setPersonal({ ...personal, dependents: +e.target.value })}
+                  min={0} max={15} />
+              </Field>
+            </Grid>
+          </div>
+        </div>
+      );
+
+      case 2: return (
+        <div>
+          <h3 style={{ color: green, marginBottom: '16px', fontSize: '13px', letterSpacing: '2px' }}>
+            💰 FINANCIAL DATA
+          </h3>
+          <div style={sectionStyle}>
+            <Grid>
+              <Field label="Monthly Income (₹)">
+                <input type="number" style={inputStyle} value={financial.monthly_income}
+                  onChange={e => setFinancial({ ...financial, monthly_income: +e.target.value })}
+                  min={0} />
+              </Field>
+
+              <Field label="Monthly Expenditure (₹)">
+                <input type="number" style={inputStyle} value={financial.monthly_expenditure}
+                  onChange={e => setFinancial({ ...financial, monthly_expenditure: +e.target.value })}
+                  min={0} />
+              </Field>
+
+              <Field label="Monthly Savings (₹)">
+                <input type="number" style={inputStyle} value={financial.monthly_savings}
+                  onChange={e => setFinancial({ ...financial, monthly_savings: +e.target.value })}
+                  min={0} />
+              </Field>
+
+              <Field label="Has Bank Account?">
+                <select style={selectStyle} value={financial.has_bank_account}
+                  onChange={e => setFinancial({ ...financial, has_bank_account: e.target.value })}>
+                  <option style={optionStyle} value="yes">✅ Yes — I have a bank account</option>
+                  <option style={optionStyle} value="no">❌ No — I don't have a bank account</option>
+                </select>
+              </Field>
+
+              <Field label="Do You Exercise Regularly?">
+                <select style={selectStyle} value={financial.does_exercise}
+                  onChange={e => setFinancial({ ...financial, does_exercise: e.target.value })}>
+                  <option style={optionStyle} value="yes">✅ Yes — Exercise daily</option>
+                  <option style={optionStyle} value="sometimes">⚡ Sometimes — Few times a week</option>
+                  <option style={optionStyle} value="rarely">😐 Rarely — Once a month</option>
+                  <option style={optionStyle} value="no">❌ No — Never exercise</option>
+                </select>
+              </Field>
+
+              <Field label="Has Existing Loans?">
+                <select style={selectStyle} value={financial.has_existing_loans}
+                  onChange={e => setFinancial({ ...financial, has_existing_loans: e.target.value })}>
+                  <option style={optionStyle} value="no">❌ No — No existing loans</option>
+                  <option style={optionStyle} value="yes">✅ Yes — I have existing loans</option>
+                </select>
+              </Field>
+
+              {financial.has_existing_loans === 'yes' && <>
+                <Field label="Number of Existing Loans">
+                  <input type="number" style={inputStyle} value={financial.num_existing_loans}
+                    onChange={e => setFinancial({ ...financial, num_existing_loans: +e.target.value })}
+                    min={1} max={20} />
+                </Field>
+                <Field label="Total Monthly EMI (₹)">
+                  <input type="number" style={inputStyle} value={financial.existing_loan_emi}
+                    onChange={e => setFinancial({ ...financial, existing_loan_emi: +e.target.value })}
+                    min={0} />
+                </Field>
+              </>}
+            </Grid>
+          </div>
+        </div>
+      );
+
+      case 3: return (
+        <div>
+          <h3 style={{ color: amber, marginBottom: '16px', fontSize: '13px', letterSpacing: '2px' }}>
+            📈 INVESTMENT & RISK BEHAVIOR
+          </h3>
+          <div style={sectionStyle}>
+            <SectionTitle color={green}>📈 Investments & Assets</SectionTitle>
+            <Grid>
+              <Field label="Do You Invest Money?">
+                <select style={selectStyle} value={investment.does_investment}
+                  onChange={e => setInvestment({ ...investment, does_investment: e.target.value })}>
+                  <option style={optionStyle} value="no">❌ No — I don't invest</option>
+                  <option style={optionStyle} value="yes">✅ Yes — I invest regularly</option>
+                </select>
+              </Field>
+
+              {investment.does_investment === 'yes' && <>
+                <Field label="Investment Type">
+                  <select style={selectStyle} value={investment.investment_type}
+                    onChange={e => setInvestment({ ...investment, investment_type: e.target.value })}>
+                    <option style={optionStyle} value="fd">Fixed Deposit (FD)</option>
+                    <option style={optionStyle} value="mutual_fund">Mutual Fund / SIP</option>
+                    <option style={optionStyle} value="gold">Gold / Jewellery</option>
+                    <option style={optionStyle} value="stocks">Stocks / Shares</option>
+                    <option style={optionStyle} value="ppf">PPF / EPF</option>
+                    <option style={optionStyle} value="property">Property / Real Estate</option>
+                    <option style={optionStyle} value="crypto">Cryptocurrency</option>
+                    <option style={optionStyle} value="nsc">NSC / Post Office Schemes</option>
+                  </select>
+                </Field>
+                <Field label="Monthly Investment Amount (₹)">
+                  <input type="number" style={inputStyle} value={investment.investment_amount}
+                    onChange={e => setInvestment({ ...investment, investment_amount: +e.target.value })}
+                    min={0} />
+                </Field>
+              </>}
+
+              <Field label="Do You Own Property / Land?">
+                <select style={selectStyle} value={investment.owns_property}
+                  onChange={e => setInvestment({ ...investment, owns_property: e.target.value })}>
+                  <option style={optionStyle} value="no">❌ No — I don't own property</option>
+                  <option style={optionStyle} value="yes">✅ Yes — I own property or land</option>
+                </select>
+              </Field>
+
+              <Field label="Do You Own a Vehicle?">
+                <select style={selectStyle} value={investment.owns_vehicle}
+                  onChange={e => setInvestment({ ...investment, owns_vehicle: e.target.value })}>
+                  <option style={optionStyle} value="no">❌ No — I don't own a vehicle</option>
+                  <option style={optionStyle} value="yes">✅ Yes — I own a vehicle</option>
+                </select>
+              </Field>
+            </Grid>
+
+            <hr style={{ border: `1px solid ${theme.border}`, margin: '16px 0' }} />
+            <SectionTitle color={pink}>⚠️ Risk Behavior</SectionTitle>
+            <Grid>
+              <Field label="Do You Gamble / Bet?">
+                <select style={selectStyle} value={riskBehavior.does_gambling}
+                  onChange={e => setRiskBehavior({ ...riskBehavior, does_gambling: e.target.value })}>
+                  <option style={optionStyle} value="no">❌ No — I never gamble or bet</option>
+                  <option style={optionStyle} value="yes">⚠️ Yes — I do gamble or bet</option>
+                </select>
+              </Field>
+
+              {riskBehavior.does_gambling === 'yes' && <>
+                <Field label="Gambling / Betting Frequency">
+                  <select style={selectStyle} value={riskBehavior.gambling_frequency}
+                    onChange={e => setRiskBehavior({ ...riskBehavior, gambling_frequency: e.target.value })}>
+                    <option style={optionStyle} value="rarely">Rarely — Once or twice a year</option>
+                    <option style={optionStyle} value="sometimes">Sometimes — Monthly</option>
+                    <option style={optionStyle} value="regularly">Regularly — Weekly or more</option>
+                  </select>
+                </Field>
+
+                <Field label="Are You Winning or Losing?">
+                  <select style={selectStyle} value={riskBehavior.gambling_result}
+                    onChange={e => setRiskBehavior({ ...riskBehavior, gambling_result: e.target.value })}>
+                    <option style={optionStyle} value="winning">📈 Winning — Making profit</option>
+                    <option style={optionStyle} value="breakeven">😐 Breaking Even — No profit no loss</option>
+                    <option style={optionStyle} value="losing">📉 Losing Money</option>
+                  </select>
+                </Field>
+
+                <Field label="Monthly Gambling Loss (₹)">
+                  <input type="number" style={inputStyle} value={riskBehavior.gambling_loss}
+                    onChange={e => setRiskBehavior({ ...riskBehavior, gambling_loss: +e.target.value })}
+                    min={0} />
+                </Field>
+              </>}
+
+              <Field label="Monthly Alcohol / Tobacco Spend (₹)">
+                <input type="number" style={inputStyle} value={riskBehavior.alcohol_tobacco_spend}
+                  onChange={e => setRiskBehavior({ ...riskBehavior, alcohol_tobacco_spend: +e.target.value })}
+                  min={0} />
+              </Field>
+            </Grid>
+          </div>
+        </div>
+      );
+
+      case 4: return (
+        <div>
+          <h3 style={{ color: purple, marginBottom: '16px', fontSize: '13px', letterSpacing: '2px' }}>
+            📱 DIGITAL & HOUSING
+          </h3>
+          <div style={sectionStyle}>
+            <SectionTitle color={cyan}>📱 Digital Behavior</SectionTitle>
+            <Grid>
+              <Field label="Do You Have a Smartphone?">
+                <select style={selectStyle} value={digital.has_smartphone}
+                  onChange={e => setDigital({ ...digital, has_smartphone: e.target.value })}>
+                  <option style={optionStyle} value="yes">✅ Yes — I have a smartphone</option>
+                  <option style={optionStyle} value="no">❌ No — Basic phone or no phone</option>
+                </select>
+              </Field>
+
+              <Field label="Do You Use UPI Payments?">
+                <select style={selectStyle} value={digital.uses_upi}
+                  onChange={e => setDigital({ ...digital, uses_upi: e.target.value })}>
+                  <option style={optionStyle} value="yes">✅ Yes — GPay / PhonePe / Paytm</option>
+                  <option style={optionStyle} value="no">❌ No — I don't use UPI</option>
+                </select>
+              </Field>
+
+              {digital.uses_upi === 'yes' && (
+                <Field label="Monthly UPI Transaction Amount (₹)">
+                  <input type="number" style={inputStyle} value={digital.upi_transaction_amount}
+                    onChange={e => setDigital({ ...digital, upi_transaction_amount: +e.target.value })}
+                    min={0} />
+                </Field>
+              )}
+
+              <Field label="Do You Have Insurance?">
+                <select style={selectStyle} value={digital.has_insurance}
+                  onChange={e => setDigital({ ...digital, has_insurance: e.target.value })}>
+                  <option style={optionStyle} value="no">❌ No — I don't have insurance</option>
+                  <option style={optionStyle} value="yes">✅ Yes — I have insurance</option>
+                </select>
+              </Field>
+
+              {digital.has_insurance === 'yes' && (
+                <Field label="Insurance Premium Paid On Time?">
+                  <select style={selectStyle} value={digital.insurance_paid_on_time}
+                    onChange={e => setDigital({ ...digital, insurance_paid_on_time: e.target.value })}>
+                    <option style={optionStyle} value="yes">✅ Yes — Always paid on time</option>
+                    <option style={optionStyle} value="no">❌ No — Sometimes missed</option>
+                  </select>
+                </Field>
+              )}
+            </Grid>
+
+            <hr style={{ border: `1px solid ${theme.border}`, margin: '16px 0' }} />
+            <SectionTitle color={amber}>🏠 Housing & Location</SectionTitle>
+            <Grid>
+              <Field label="Housing Type">
+                <select style={selectStyle} value={housing.housing_type}
+                  onChange={e => setHousing({ ...housing, housing_type: e.target.value })}>
+                  <option style={optionStyle} value="owned">🏠 Own House — Self Owned</option>
+                  <option style={optionStyle} value="owned_family">🏠 Family House — Parents / Relatives</option>
+                  <option style={optionStyle} value="rented">🏢 Rented House / Flat</option>
+                  <option style={optionStyle} value="rented_room">🛏️ Rented Single Room</option>
+                  <option style={optionStyle} value="shared">👥 Shared Accommodation</option>
+                  <option style={optionStyle} value="company">🏭 Company / Employer Provided</option>
+                  <option style={optionStyle} value="government">🏛️ Government Provided Housing</option>
+                  <option style={optionStyle} value="homeless">⚠️ No Fixed Address</option>
+                </select>
+              </Field>
+
+              {(housing.housing_type === 'rented' || housing.housing_type === 'rented_room') && (
+                <Field label="Monthly Rent (₹)">
+                  <input type="number" style={inputStyle} value={housing.monthly_rent}
+                    onChange={e => setHousing({ ...housing, monthly_rent: +e.target.value })}
+                    min={0} />
+                </Field>
+              )}
+
+              <Field label="Location Stability Score (0–100)">
+                <input type="number" style={inputStyle} value={location.location_stability}
+                  onChange={e => setLocation({ ...location, location_stability: +e.target.value })}
+                  min={0} max={100} />
+              </Field>
+
+              <Field label="Months at Current Address">
+                <input type="number" style={inputStyle} value={location.months_at_address}
+                  onChange={e => setLocation({ ...location, months_at_address: +e.target.value })}
+                  min={0} />
+              </Field>
+            </Grid>
+          </div>
+        </div>
+      );
+
+      case 5: return (
+        <div>
+          <h3 style={{ color: green, marginBottom: '8px', fontSize: '13px', letterSpacing: '2px' }}>
+            📅 MONTHLY BEHAVIOR (12 MONTHS)
+          </h3>
+          <p style={{ fontSize: '10px', color: theme.textMuted, marginBottom: '16px' }}>
+            January = oldest month, December = most recent month.
+          </p>
+
+          {monthlyBehavior.map((m, i) => (
+            <div key={i} style={{
+              ...sectionStyle, marginBottom: '8px',
+              borderLeft: `3px solid ${i === 11 ? green : i >= 9 ? cyan : theme.border}`,
+            }}>
+              <p style={{
+                fontSize: '10px', marginBottom: '10px', fontWeight: '700',
+                color: i === 11 ? green : i >= 9 ? cyan : theme.textMuted,
+              }}>
+                📅 {MONTH_NAMES[i]}
+                {i === 11 && (
+                  <span style={{
+                    marginLeft: '8px', fontSize: '8px', color: green,
+                    background: `${green}20`, padding: '2px 6px', borderRadius: '2px',
+                  }}>MOST RECENT</span>
+                )}
+              </p>
+              <Grid cols={isMobile ? 1 : 4}>
+                <Field label="Recharge Amount (₹)">
+                  <input type="number" style={inputStyle} value={m.recharge_amount}
+                    onChange={e => {
+                      const u = [...monthlyBehavior];
+                      u[i] = { ...u[i], recharge_amount: +e.target.value };
+                      setMonthlyBehavior(u);
+                    }} min={0} />
+                </Field>
+                <Field label="Recharge Frequency">
+                  <select style={selectStyle} value={m.recharge_frequency}
+                    onChange={e => {
+                      const u = [...monthlyBehavior];
+                      u[i] = { ...u[i], recharge_frequency: +e.target.value };
+                      setMonthlyBehavior(u);
+                    }}>
+                    <option style={optionStyle} value={1}>1x — Once a month</option>
+                    <option style={optionStyle} value={2}>2x — Twice a month</option>
+                    <option style={optionStyle} value={3}>3x — Three times</option>
+                    <option style={optionStyle} value={4}>4x — Weekly or more</option>
+                  </select>
+                </Field>
+                <Field label="Electricity Bill Paid?">
+                  <select style={selectStyle} value={m.electricity_paid}
+                    onChange={e => {
+                      const u = [...monthlyBehavior];
+                      u[i] = { ...u[i], electricity_paid: e.target.value };
+                      setMonthlyBehavior(u);
+                    }}>
+                    <option style={optionStyle} value="yes">✅ Yes — Paid</option>
+                    <option style={optionStyle} value="no">❌ No — Not Paid</option>
+                  </select>
+                </Field>
+                <Field label="Grocery Spend (₹)">
+                  <input type="number" style={inputStyle} value={m.grocery_spend}
+                    onChange={e => {
+                      const u = [...monthlyBehavior];
+                      u[i] = { ...u[i], grocery_spend: +e.target.value };
+                      setMonthlyBehavior(u);
+                    }} min={0} />
+                </Field>
+              </Grid>
+            </div>
+          ))}
+
+          <button
+            onClick={() => setMonthlyBehavior(Array(12).fill(null).map(() => ({ ...defaultMonth })))}
+            style={{
+              padding: '8px 16px', background: 'transparent',
+              border: `1px solid ${amber}40`, borderRadius: '4px',
+              fontSize: '10px', color: amber, cursor: 'pointer',
+              fontFamily: "'Courier New',monospace", marginTop: '8px',
+            }}>
+            🔄 RESET ALL MONTHS TO DEFAULT
+          </button>
+        </div>
+      );
+
+      case 6: return (
+        <div>
+          <h3 style={{ color: purple, marginBottom: '8px', fontSize: '13px', letterSpacing: '2px' }}>
+            🤝 SOCIAL REFERENCES
+          </h3>
+          <p style={{ fontSize: '10px', color: theme.textMuted, marginBottom: '16px' }}>
+            Add people who can vouch for you — minimum 1, maximum 3.
+          </p>
+
+          {references.map((r, i) => (
+            <div key={i} style={{
+              ...sectionStyle, marginBottom: '8px',
+              borderLeft: `3px solid ${purple}`,
+            }}>
+              <p style={{
+                fontSize: '10px', color: purple, marginBottom: '12px',
+                fontWeight: '700', letterSpacing: '1px',
+              }}>
+                👤 Reference {i + 1}
+              </p>
+              <Grid>
+                <Field label="Relationship Type">
+                  <select style={selectStyle} value={r.relationship_type}
+                    onChange={e => {
+                      const updated = [...references];
+                      updated[i] = { ...updated[i], relationship_type: e.target.value };
+                      setReferences(updated);
+                    }}>
+                    <option style={optionStyle} value="guarantor">🔒 Guarantor — Will take responsibility</option>
+                    <option style={optionStyle} value="employer">💼 Employer — My boss or manager</option>
+                    <option style={optionStyle} value="neighbor">🏘️ Neighbor — Lives near me</option>
+                    <option style={optionStyle} value="friend">👫 Friend — Personal friend</option>
+                    <option style={optionStyle} value="relative">👨‍👩‍👧 Relative — Family member</option>
+                    <option style={optionStyle} value="colleague">🏢 Colleague — Work colleague</option>
+                    <option style={optionStyle} value="teacher">📚 Teacher / Professor</option>
+                    <option style={optionStyle} value="doctor">🩺 Doctor / Healthcare</option>
+                    <option style={optionStyle} value="community_leader">🌟 Community Leader / Sarpanch</option>
+                  </select>
+                </Field>
+
+                <Field label="How Trustworthy Are They?">
+                  <select style={selectStyle} value={r.trust_score}
+                    onChange={e => {
+                      const updated = [...references];
+                      updated[i] = { ...updated[i], trust_score: e.target.value };
+                      setReferences(updated);
+                    }}>
+                    <option style={optionStyle} value="1.0">⭐⭐⭐⭐⭐ Excellent (1.0)</option>
+                    <option style={optionStyle} value="0.9">⭐⭐⭐⭐⭐ Very Good (0.9)</option>
+                    <option style={optionStyle} value="0.8">⭐⭐⭐⭐ Good (0.8)</option>
+                    <option style={optionStyle} value="0.7">⭐⭐⭐⭐ Above Average (0.7)</option>
+                    <option style={optionStyle} value="0.6">⭐⭐⭐ Average (0.6)</option>
+                    <option style={optionStyle} value="0.5">⭐⭐⭐ Below Average (0.5)</option>
+                    <option style={optionStyle} value="0.4">⭐⭐ Low (0.4)</option>
+                    <option style={optionStyle} value="0.3">⭐ Very Low (0.3)</option>
+                    <option style={optionStyle} value="0.2">⭐ Poor (0.2)</option>
+                    <option style={optionStyle} value="0.1">❌ Very Poor (0.1)</option>
+                  </select>
+                </Field>
+              </Grid>
+
+              {references.length > 1 && (
+                <button
+                  onClick={() => setReferences(references.filter((_, idx) => idx !== i))}
+                  style={{
+                    padding: '4px 12px', background: 'transparent',
+                    border: `1px solid ${pink}40`, borderRadius: '2px',
+                    fontSize: '9px', color: pink, cursor: 'pointer',
+                    fontFamily: "'Courier New',monospace", marginTop: '8px',
+                  }}>
+                  🗑️ REMOVE
+                </button>
+              )}
+            </div>
+          ))}
+
+          {references.length < 3 && (
+            <button
+              onClick={() => setReferences([
+                ...references,
+                { trust_score: '0.6', relationship_type: 'friend' },
+              ])}
+              style={{
+                padding: '10px 20px', background: 'transparent',
+                border: `1px solid ${green}40`, borderRadius: '4px',
+                fontSize: '10px', color: green, cursor: 'pointer',
+                fontFamily: "'Courier New',monospace",
+              }}>
+              + ADD ANOTHER REFERENCE
+            </button>
+          )}
+        </div>
+      );
+
+      default: return null;
     }
   };
 
   return (
     <div style={{
-      minHeight:  '100vh',
-      background: theme.bg,
+      minHeight: '100vh', background: theme.bg,
       fontFamily: "'Courier New',monospace",
-      position:   'relative',
-      overflow:   'hidden',
-      transition: 'background 0.3s ease',
+      padding: isMobile ? '16px' : '40px 20px',
     }}>
-      <style>{`
-        @keyframes cornerBlink{0%,100%{opacity:1}50%{opacity:0.3}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes scanH{0%{top:-2px}100%{top:100%}}
-        @keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.98)}}
-        @keyframes msgFade{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
-        .app-card{
-          background:   ${theme.bgCard};
-          border:       1px solid ${theme.border};
-          border-radius:4px;
-          padding:      24px;
-          position:     relative;
-          overflow:     hidden;
-          margin-bottom:16px;
-          transition:   all 0.3s ease;
-          box-shadow:   ${theme.isDark?'none':'0 2px 12px rgba(0,100,180,0.08)'};
-        }
-        .app-scan{
-          position:  absolute;
-          left:      0;
-          right:     0;
-          height:    1px;
-          animation: scanH 4s linear infinite;
-          pointer-events:none;
-        }
-        .cyber-slider{
-          -webkit-appearance:none;
-          appearance:none;
-          width:        100%;
-          height:       4px;
-          border-radius:2px;
-          background:   ${theme.isDark?'rgba(255,255,255,0.06)':'rgba(0,100,180,0.1)'};
-          outline:      none;
-          cursor:       pointer;
-          transition:   background 0.3s ease;
-        }
-        .thumb-green::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${green};box-shadow:0 0 8px ${green};cursor:pointer;border:2px solid ${theme.isDark?'rgba(0,3,8,0.9)':'rgba(255,255,255,0.9)'};}
-        .thumb-purple::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${purple};box-shadow:0 0 8px ${purple};cursor:pointer;border:2px solid ${theme.isDark?'rgba(0,3,8,0.9)':'rgba(255,255,255,0.9)'};}
-        .thumb-cyan::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${cyan};box-shadow:0 0 8px ${cyan};cursor:pointer;border:2px solid ${theme.isDark?'rgba(0,3,8,0.9)':'rgba(255,255,255,0.9)'};}
-        .thumb-amber::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${amber};box-shadow:0 0 8px ${amber};cursor:pointer;border:2px solid ${theme.isDark?'rgba(0,3,8,0.9)':'rgba(255,255,255,0.9)'};}
-        .thumb-pink::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${pink};box-shadow:0 0 8px ${pink};cursor:pointer;border:2px solid ${theme.isDark?'rgba(0,3,8,0.9)':'rgba(255,255,255,0.9)'};}
-      `}</style>
+      <div style={{ maxWidth: '820px', margin: '0 auto' }}>
 
-      <canvas ref={canvasRef} style={{ position:'fixed', top:0, left:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0, opacity:theme.isDark?0.4:0.15 }}/>
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{
+            fontSize: isMobile ? '16px' : '20px', fontWeight: '900',
+            color: cyan, letterSpacing: '3px', textTransform: 'uppercase',
+            margin: '0 0 6px',
+          }}>
+            ⚡ LOANIQ CREDIT ANALYSIS
+          </h1>
+          <p style={{ fontSize: '10px', color: theme.textMuted, margin: 0 }}>
+            Step {step} of {totalSteps} — Complete all steps to get your AI credit score
+          </p>
+        </div>
 
-      {/* Corner decorations */}
-      {[
-        { top:16,    left:16,  borderTop:`2px solid ${cyan}`,    borderLeft:`2px solid ${cyan}`    },
-        { top:16,    right:16, borderTop:`2px solid ${purple}`,  borderRight:`2px solid ${purple}` },
-        { bottom:16, left:16,  borderBottom:`2px solid ${green}`,borderLeft:`2px solid ${green}`   },
-        { bottom:16, right:16, borderBottom:`2px solid ${pink}`, borderRight:`2px solid ${pink}`   },
-      ].map((s,i) => (
-        <div key={i} style={{ position:'fixed', width:32, height:32, zIndex:1, animation:`cornerBlink ${1.5+i*0.3}s ease-in-out infinite`, ...s }}/>
-      ))}
-
-      {/* Loading Overlay */}
-      {submitting && (
         <div style={{
-          position:'fixed', top:0, left:0, right:0, bottom:0,
-          background:    theme.isDark ? 'rgba(0,3,8,0.95)' : 'rgba(240,244,248,0.97)',
-          zIndex:        1000,
-          display:       'flex',
-          flexDirection: 'column',
-          alignItems:    'center',
-          justifyContent:'center',
-          backdropFilter:'blur(10px)',
+          height: '6px', background: theme.border,
+          borderRadius: '3px', marginBottom: '12px',
         }}>
-          <div style={{ position:'relative', width:'160px', height:'160px', marginBottom:'40px' }}>
-            {[
-              { size:160, color:cyan,   dur:'2s'   },
-              { size:130, color:purple, dur:'3s'   },
-              { size:100, color:green,  dur:'1.5s' },
-            ].map((r,i) => (
-              <div key={i} style={{
-                position:     'absolute',
-                top:          `${(160-r.size)/2}px`,
-                left:         `${(160-r.size)/2}px`,
-                width:        `${r.size}px`,
-                height:       `${r.size}px`,
-                borderRadius: '50%',
-                border:       `2px solid ${r.color}`,
-                animation:    `spin ${r.dur} linear infinite ${i%2===1?'reverse':''}`,
-                boxShadow:    `0 0 15px ${r.color}40`,
-                opacity:      0.8,
-              }}/>
-            ))}
-            <div style={{
-              position:       'absolute',
-              top:            '50%',
-              left:           '50%',
-              transform:      'translate(-50%,-50%)',
-              width:          '60px',
-              height:         '60px',
-              borderRadius:   '12px',
-              background:     `linear-gradient(135deg,${cyan}20,${purple}20)`,
-              border:         `1px solid ${cyan}60`,
-              display:        'flex',
-              alignItems:     'center',
-              justifyContent: 'center',
-              fontSize:       '28px',
-              animation:      'pulse 1s ease-in-out infinite',
-            }}>💳</div>
-          </div>
-          <div style={{ fontSize:'14px', fontWeight:'900', color:cyan, letterSpacing:'4px', textTransform:'uppercase', textShadow:`0 0 20px ${cyan}`, marginBottom:'16px' }}>
-            NEURAL ANALYSIS IN PROGRESS
-          </div>
-          <div key={loadingMsg} style={{ fontSize:'11px', color:theme.isDark?`rgba(0,255,247,0.6)`:`rgba(0,80,180,0.7)`, letterSpacing:'2px', marginBottom:'32px', animation:'msgFade 0.4s ease', textAlign:'center', maxWidth:'400px', lineHeight:'1.6' }}>
-            {loadingMsg}
-          </div>
-          <div style={{ display:'flex', gap:'8px' }}>
-            {[0,1,2,3,4].map(i => (
-              <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:cyan, boxShadow:`0 0 6px ${cyan}`, animation:`pulse 1s ease-in-out ${i*0.2}s infinite` }}/>
-            ))}
-          </div>
-          <div style={{ position:'absolute', bottom:'40px', fontSize:'9px', letterSpacing:'2px', color:theme.textDim, textAlign:'center' }}>
-            TRANSFORMER + GRAPH ATTENTION NETWORK v2.0 · AUC 0.9618
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div style={{
-        maxWidth:   '760px',
-        margin:     '0 auto',
-        padding:    '60px 20px 40px',
-        position:   'relative',
-        zIndex:     10,
-        opacity:    mounted ? 1 : 0,
-        transform:  mounted ? 'translateY(0)' : 'translateY(30px)',
-        transition: 'all 0.8s cubic-bezier(0.34,1.56,0.64,1)',
-      }}>
-
-        {/* Header */}
-        <div style={{ marginBottom:'32px' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
-            <div style={{ width:'3px', height:'28px', background:`linear-gradient(180deg,${purple},${cyan})`, boxShadow:`0 0 10px ${purple}` }}/>
-            <div>
-              <h1 style={{ fontSize:'22px', fontWeight:'900', color:purple, margin:0, letterSpacing:'4px', textTransform:'uppercase', textShadow:theme.isDark?`0 0 20px ${purple}60`:'none' }}>
-                LOAN APPLICATION
-              </h1>
-              <p style={{ fontSize:'9px', color:theme.textMuted, letterSpacing:'3px', margin:'4px 0 0', textTransform:'uppercase' }}>
-                NEURAL CREDIT ANALYSIS v2.0
-              </p>
-            </div>
-          </div>
-          <div style={{ height:'1px', background:`linear-gradient(90deg,${purple}60,${cyan}40,transparent)` }}/>
+          <div style={{
+            height: '100%',
+            width: `${(step / totalSteps) * 100}%`,
+            background: `linear-gradient(90deg, ${cyan}, ${purple})`,
+            borderRadius: '3px', transition: 'width 0.4s ease',
+            boxShadow: `0 0 8px ${cyan}60`,
+          }} />
         </div>
 
-        {/* Error */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          marginBottom: '24px', flexWrap: 'wrap', gap: '4px',
+        }}>
+          {[
+            { label: 'Personal', icon: '👤' },
+            { label: 'Financial', icon: '💰' },
+            { label: 'Investment', icon: '📈' },
+            { label: 'Digital', icon: '📱' },
+            { label: 'Monthly', icon: '📅' },
+            { label: 'References', icon: '🤝' },
+          ].map((s, i) => (
+            <span key={i}
+              style={{
+                fontSize: '9px',
+                color: i + 1 === step ? cyan : i + 1 < step ? green : theme.textMuted,
+                fontWeight: i + 1 === step ? '700' : 'normal',
+                cursor: i + 1 < step ? 'pointer' : 'default',
+              }}
+              onClick={() => { if (i + 1 < step) setStep(i + 1); }}>
+              {s.icon} {s.label}
+            </span>
+          ))}
+        </div>
+
+        {renderStep()}
+
         {error && (
-          <div style={{ padding:'12px 16px', marginBottom:'16px', background:'rgba(255,45,155,0.08)', border:'1px solid rgba(255,45,155,0.3)', borderRadius:'4px', fontSize:'11px', color:pink, letterSpacing:'1px', animation:'fadeUp 0.3s ease' }}>
-            ⚠ {error}
+          <div style={{
+            padding: '10px 14px',
+            background: 'rgba(255,45,155,0.1)',
+            border: `1px solid ${pink}40`,
+            borderRadius: '4px', fontSize: '11px',
+            color: pink, marginBottom: '16px',
+          }}>
+            ⚠️ {error}
           </div>
         )}
 
-        {/* MODULE 01 — Location & Stability */}
-        <div className="app-card">
-          <div className="app-scan" style={{ background:`linear-gradient(90deg,transparent,${purple}40,transparent)` }}/>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'20px' }}>
-            <span style={{ fontSize:'10px', fontWeight:'700', color:pink, letterSpacing:'3px', textShadow:theme.isDark?`0 0 8px ${pink}`:'none' }}>◈ MODULE 01</span>
-            <span style={{ fontSize:'13px', fontWeight:'700', color:theme.text, letterSpacing:'2px' }}>LOCATION & STABILITY</span>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'24px' }}>
-            {[
-              { label:'LOCATION STABILITY SCORE',  value:location.stability,         min:0, max:100, step:1,  color:green,  key:'stability',         display:v=>`${v}`,      cls:'thumb-green'  },
-              { label:'MONTHS AT CURRENT ADDRESS', value:location.months_at_address,  min:1, max:120, step:1,  color:purple, key:'months_at_address', display:v=>`${v} mo`,   cls:'thumb-purple' },
-            ].map((s,i) => (
-              <div key={i}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px' }}>
-                  <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textMuted, textTransform:'uppercase' }}>{s.label}</span>
-                  <span style={{ fontSize:'13px', fontWeight:'700', color:s.color, fontFamily:"'Courier New',monospace", textShadow:theme.isDark?`0 0 6px ${s.color}`:'none' }}>{s.display(s.value)}</span>
-                </div>
-                <input type="range" className={`cyber-slider ${s.cls}`}
-                  min={s.min} max={s.max} step={s.step} value={s.value}
-                  onChange={e => setLocation(prev => ({ ...prev, [s.key]: parseFloat(e.target.value) }))}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+        <div style={{
+          display: 'flex', gap: '12px',
+          justifyContent: 'space-between', marginTop: '20px',
+        }}>
+          {step > 1 ? (
+            <button onClick={() => setStep(step - 1)} style={{
+              padding: '12px 24px', background: 'transparent',
+              border: `1px solid ${theme.border}`, borderRadius: '4px',
+              fontSize: '11px', color: theme.textMuted, cursor: 'pointer',
+              fontFamily: "'Courier New',monospace", letterSpacing: '2px',
+            }}>
+              ← BACK
+            </button>
+          ) : <div />}
 
-        {/* MODULE 02 — 12-Month Behavioral Data */}
-        <div className="app-card">
-          <div className="app-scan" style={{ background:`linear-gradient(90deg,transparent,${cyan}40,transparent)` }}/>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-              <span style={{ fontSize:'10px', fontWeight:'700', color:cyan, letterSpacing:'3px', textShadow:theme.isDark?`0 0 8px ${cyan}`:'none' }}>◈ MODULE 02</span>
-              <span style={{ fontSize:'13px', fontWeight:'700', color:theme.text, letterSpacing:'2px' }}>12-MONTH BEHAVIORAL DATA</span>
-            </div>
-            {/* Quarter tabs */}
-            <div style={{ display:'flex', gap:'4px' }}>
-              {['Q1','Q2','Q3','Q4'].map(q => (
-                <button key={q} onClick={() => setActiveQ(q)} style={{
-                  padding:      '6px 14px',
-                  background:   activeQ===q ? `linear-gradient(135deg,${cyan},${purple})` : 'transparent',
-                  border:       `1px solid ${activeQ===q ? 'transparent' : `${cyan}30`}`,
-                  borderRadius: '2px',
-                  fontSize:     '10px',
-                  fontWeight:   '700',
-                  letterSpacing:'1px',
-                  color:        activeQ===q ? '#000' : theme.textMuted,
-                  cursor:       'pointer',
-                  fontFamily:   "'Courier New',monospace",
-                  transition:   'all 0.3s',
-                  boxShadow:    activeQ===q ? `0 0 12px ${cyan}40` : 'none',
-                }}>
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Month cards */}
-          <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
-            {QUARTERS[activeQ].map(idx => (
-              <div key={idx} style={{
-                padding:      '16px',
-                background:   theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,100,180,0.03)',
-                border:       `1px solid ${theme.isDark ? 'rgba(0,255,247,0.08)' : 'rgba(0,100,180,0.1)'}`,
-                borderRadius: '4px',
-                transition:   'all 0.3s ease',
-              }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
-                  <span style={{ fontSize:'12px', fontWeight:'900', color:cyan, letterSpacing:'3px', padding:'4px 10px', background:theme.isDark?`${cyan}10`:'rgba(0,100,180,0.08)', border:`1px solid ${cyan}30`, borderRadius:'2px' }}>
-                    {MONTHS[idx]}
-                  </span>
-                  <span style={{ fontSize:'9px', color:theme.textDim, letterSpacing:'2px' }}>
-                    MONTH {idx+1} / 12
-                  </span>
-                </div>
-
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' }}>
-                  {/* Recharge Amount */}
-                  <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
-                      <span style={{ fontSize:'9px', letterSpacing:'1px', color:theme.textMuted, textTransform:'uppercase' }}>RECHARGE AMOUNT</span>
-                      <span style={{ fontSize:'11px', fontWeight:'700', color:green, fontFamily:"'Courier New',monospace" }}>{months[idx].recharge_amount}₹</span>
-                    </div>
-                    <input type="range" className="cyber-slider thumb-green"
-                      min={0} max={1000} step={50}
-                      value={months[idx].recharge_amount}
-                      onChange={e => updateMonth(idx, 'recharge_amount', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  {/* Recharge Frequency */}
-                  <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
-                      <span style={{ fontSize:'9px', letterSpacing:'1px', color:theme.textMuted, textTransform:'uppercase' }}>RECHARGE FREQUENCY</span>
-                      <span style={{ fontSize:'11px', fontWeight:'700', color:purple, fontFamily:"'Courier New',monospace" }}>{months[idx].recharge_frequency}x</span>
-                    </div>
-                    <input type="range" className="cyber-slider thumb-purple"
-                      min={1} max={4} step={1}
-                      value={months[idx].recharge_frequency}
-                      onChange={e => updateMonth(idx, 'recharge_frequency', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  {/* Grocery Spend */}
-                  <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
-                      <span style={{ fontSize:'9px', letterSpacing:'1px', color:theme.textMuted, textTransform:'uppercase' }}>GROCERY SPEND</span>
-                      <span style={{ fontSize:'11px', fontWeight:'700', color:amber, fontFamily:"'Courier New',monospace" }}>{months[idx].grocery_spend}₹</span>
-                    </div>
-                    <input type="range" className="cyber-slider thumb-amber"
-                      min={500} max={10000} step={500}
-                      value={months[idx].grocery_spend}
-                      onChange={e => updateMonth(idx, 'grocery_spend', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  {/* Electricity Paid */}
-                  <div>
-                    <div style={{ marginBottom:'6px' }}>
-                      <span style={{ fontSize:'9px', letterSpacing:'1px', color:theme.textMuted, textTransform:'uppercase' }}>ELECTRICITY PAID</span>
-                    </div>
-                    <div style={{ display:'flex', gap:'10px', marginTop:'4px' }}>
-                      {[
-                        { label:'✓ YES', value:1, color:green },
-                        { label:'✗ NO',  value:0, color:pink  },
-                      ].map(opt => (
-                        <button key={opt.value}
-                          onClick={() => updateMonth(idx, 'electricity_paid', opt.value)}
-                          style={{
-                            flex:         1,
-                            padding:      '10px',
-                            background:   months[idx].electricity_paid===opt.value ? `${opt.color}20` : 'transparent',
-                            border:       `1px solid ${months[idx].electricity_paid===opt.value ? opt.color : `${opt.color}30`}`,
-                            borderRadius: '2px',
-                            fontSize:     '11px',
-                            fontWeight:   '700',
-                            color:        months[idx].electricity_paid===opt.value ? opt.color : `${opt.color}50`,
-                            cursor:       'pointer',
-                            fontFamily:   "'Courier New',monospace",
-                            letterSpacing:'1px',
-                            transition:   'all 0.3s',
-                            boxShadow:    months[idx].electricity_paid===opt.value ? `0 0 12px ${opt.color}30` : 'none',
-                          }}>
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* MODULE 03 — Social Trust Graph */}
-        <div className="app-card">
-          <div className="app-scan" style={{ background:`linear-gradient(90deg,transparent,${amber}40,transparent)` }}/>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-              <span style={{ fontSize:'10px', fontWeight:'700', color:pink, letterSpacing:'3px', textShadow:theme.isDark?`0 0 8px ${pink}`:'none' }}>◈ MODULE 03</span>
-              <span style={{ fontSize:'13px', fontWeight:'700', color:theme.text, letterSpacing:'2px' }}>SOCIAL TRUST GRAPH</span>
-            </div>
-            {references.length < 3 && (
-              <button onClick={addReference} style={{
-                padding:       '8px 16px',
-                background:    `${amber}10`,
-                border:        `1px solid ${amber}40`,
-                borderRadius:  '2px',
-                fontSize:      '10px',
-                fontWeight:    '700',
-                letterSpacing: '2px',
-                color:         amber,
-                cursor:        'pointer',
-                fontFamily:    "'Courier New',monospace",
-                textTransform: 'uppercase',
-                transition:    'all 0.3s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background=`${amber}20`; e.currentTarget.style.boxShadow=`0 0 10px ${amber}30`; }}
-              onMouseLeave={e => { e.currentTarget.style.background=`${amber}10`; e.currentTarget.style.boxShadow='none'; }}>
-                + ADD NODE
-              </button>
-            )}
-          </div>
-
-          <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
-            {references.map((ref, idx) => (
-              <div key={idx} style={{
-                padding:      '16px',
-                paddingTop:   references.length > 1 ? '44px' : '16px',
-                background:   theme.isDark ? 'rgba(255,184,0,0.04)' : 'rgba(255,184,0,0.06)',
-                border:       `1px solid ${amber}25`,
-                borderRadius: '4px',
-                position:     'relative',
-                transition:   'all 0.3s ease',
-              }}>
-
-                {/* Node header — label + remove button */}
-                {references.length > 1 && (
-                  <div style={{
-                    position:       'absolute',
-                    top:            '10px',
-                    left:           '16px',
-                    right:          '16px',
-                    display:        'flex',
-                    alignItems:     'center',
-                    justifyContent: 'space-between',
-                  }}>
-                    <span style={{ fontSize:'9px', fontWeight:'700', color:`${amber}80`, letterSpacing:'2px', textTransform:'uppercase' }}>
-                      ◈ NODE {idx + 1}
-                    </span>
-                    <button
-                      onClick={() => removeReference(idx)}
-                      style={{
-                        background:    `${pink}10`,
-                        border:        `1px solid ${pink}30`,
-                        borderRadius:  '2px',
-                        color:         pink,
-                        cursor:        'pointer',
-                        fontSize:      '9px',
-                        fontWeight:    '700',
-                        padding:       '3px 10px',
-                        fontFamily:    "'Courier New',monospace",
-                        letterSpacing: '1px',
-                        transition:    'all 0.3s',
-                        whiteSpace:    'nowrap',
-                        display:       'flex',
-                        alignItems:    'center',
-                        gap:           '4px',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background=`${pink}25`; e.currentTarget.style.boxShadow=`0 0 8px ${pink}30`; }}
-                      onMouseLeave={e => { e.currentTarget.style.background=`${pink}10`; e.currentTarget.style.boxShadow='none'; }}>
-                      ✕ REMOVE
-                    </button>
-                  </div>
-                )}
-
-                {/* Node content */}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' }}>
-                  {/* Node type */}
-                  <div>
-                    <div style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textMuted, marginBottom:'8px', textTransform:'uppercase' }}>NODE TYPE</div>
-                    <select
-                      value={ref.relationship_type}
-                      onChange={e => updateReference(idx, 'relationship_type', e.target.value)}
-                      style={{
-                        width:         '100%',
-                        padding:       '10px 14px',
-                        background:    theme.isDark ? 'rgba(0,3,8,0.9)' : 'rgba(255,255,255,0.95)',
-                        border:        `1px solid ${amber}30`,
-                        borderRadius:  '4px',
-                        color:         amber,
-                        fontSize:      '12px',
-                        fontFamily:    "'Courier New',monospace",
-                        cursor:        'pointer',
-                        outline:       'none',
-                        letterSpacing: '1px',
-                      }}>
-                      <option value="guarantor">GUARANTOR</option>
-                      <option value="employer">EMPLOYER</option>
-                      <option value="neighbor">NEIGHBOR</option>
-                    </select>
-                  </div>
-
-                  {/* Trust score */}
-                  <div>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px' }}>
-                      <span style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textMuted, textTransform:'uppercase' }}>TRUST SCORE</span>
-                      <span style={{ fontSize:'13px', fontWeight:'700', color:amber, fontFamily:"'Courier New',monospace" }}>{Math.round(ref.trust_score*100)}%</span>
-                    </div>
-                    <input type="range" className="cyber-slider thumb-amber"
-                      min={0} max={1} step={0.05}
-                      value={ref.trust_score}
-                      onChange={e => updateReference(idx, 'trust_score', parseFloat(e.target.value))}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          style={{
-            width:          '100%',
-            padding:        '18px',
-            background:     submitting
-              ? theme.isDark ? 'rgba(0,255,247,0.08)' : 'rgba(0,100,180,0.08)'
-              : `linear-gradient(135deg,${cyan},${purple},${pink},${cyan})`,
-            backgroundSize: '300% 300%',
-            animation:      submitting ? 'none' : 'gradShift 3s ease infinite',
-            border:         `1px solid ${submitting ? `${cyan}30` : 'transparent'}`,
-            borderRadius:   '4px',
-            fontSize:       '14px',
-            fontWeight:     '900',
-            letterSpacing:  '4px',
-            color:          submitting ? `${cyan}60` : '#000',
-            cursor:         submitting ? 'not-allowed' : 'pointer',
-            fontFamily:     "'Courier New',monospace",
-            textTransform:  'uppercase',
-            transition:     'all 0.3s',
-            boxShadow:      submitting ? 'none' : `0 0 30px ${cyan}30`,
-            marginTop:      '8px',
-          }}
-          onMouseEnter={e => { if(!submitting){ e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow=`0 0 40px ${cyan}50`; }}}
-          onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow=submitting?'none':`0 0 30px ${cyan}30`; }}>
-          {submitting ? '⚡ ANALYZING...' : '⚡ INITIATE CREDIT ANALYSIS'}
-        </button>
-
-        {/* Footer */}
-        <div style={{ marginTop:'20px', textAlign:'center' }}>
-          <p style={{ fontSize:'9px', letterSpacing:'2px', color:theme.textDim, margin:0, textTransform:'uppercase' }}>
-            LOANIQ · NEURAL CREDIT INTELLIGENCE · AUC 0.9618
-          </p>
+          {step < totalSteps ? (
+            <button onClick={() => setStep(step + 1)} style={{
+              padding: '12px 32px',
+              background: `linear-gradient(135deg, ${cyan}20, ${purple}10)`,
+              border: `1px solid ${cyan}40`, borderRadius: '4px',
+              fontSize: '11px', color: cyan, cursor: 'pointer',
+              fontFamily: "'Courier New',monospace", letterSpacing: '2px',
+            }}>
+              NEXT →
+            </button>
+          ) : (
+            <button onClick={handleSubmit} disabled={loading} style={{
+              padding: '12px 32px',
+              background: loading
+                ? 'transparent'
+                : `linear-gradient(135deg, ${green}30, ${cyan}10)`,
+              border: `1px solid ${green}40`, borderRadius: '4px',
+              fontSize: '11px', color: green,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontFamily: "'Courier New',monospace", letterSpacing: '2px',
+            }}>
+              {loading ? '⏳ ANALYZING...' : '⚡ GET CREDIT SCORE'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

@@ -80,7 +80,7 @@ export default function BatchScoring() {
       const token    = localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
-      const res = await axios.post('https://loaniq-backend-6dmd.onrender.com/batch/predict', formData, {
+      const res = await axios.post('http://127.0.0.1:8000/batch/predict', formData, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type':'multipart/form-data' },
       });
       setResults(res.data); setActiveTab('results');
@@ -415,4 +415,5 @@ Vikram Patel,600,3,6000,1,80,18,0.75`;
     </div>
   );
 }
+
 

@@ -134,26 +134,81 @@ def generate_explanation(shap_values, feature_names):
             "Your social references have strong trust profiles, boosting your application.",
             "Weak or limited social references reduced confidence in your application."
         ),
+        "income_expense_ratio": (
+            "Your income comfortably exceeds your expenditure — strong financial health.",
+            "Your expenditure is too close to or exceeds your income — financial stress detected."
+        ),
+        "savings_rate": (
+            "You save a healthy portion of your income every month — excellent habit.",
+            "Low or no savings detected — improving savings will significantly boost your score."
+        ),
+        "employment_type": (
+            "Your employment type indicates stable and reliable income.",
+            "Your current employment type carries higher income instability risk."
+        ),
+        "education_level": (
+            "Your education level positively contributes to your creditworthiness.",
+            "Higher education could improve long-term earning potential and score."
+        ),
+        "emi_burden": (
+            "Your existing loan obligations are manageable relative to your income.",
+            "High EMI burden relative to income is a significant risk factor."
+        ),
+        "investment_activity": (
+            "Active investments show financial discipline and future planning.",
+            "No investment activity detected — starting small investments will help your score."
+        ),
+        "gambling_behavior": (
+            "No gambling or betting activity detected — excellent financial discipline.",
+            "Gambling or betting activity detected — this significantly reduces your score."
+        ),
+        "upi_usage": (
+            "Regular UPI transactions show digital financial engagement.",
+            "Low digital payment activity detected."
+        ),
+        "has_insurance": (
+            "Having insurance shows financial responsibility and risk planning.",
+            "No insurance coverage detected — consider getting basic insurance."
+        ),
+        "owns_assets": (
+            "Owning property or vehicle provides financial collateral and stability.",
+            "No significant assets detected."
+        ),
+        "alcohol_tobacco": (
+            "Low spending on alcohol and tobacco shows responsible financial habits.",
+            "High spending on alcohol or tobacco is reducing your disposable income."
+        ),
+        "dependents_ratio": (
+            "Your number of dependents is manageable for your income level.",
+            "High number of dependents relative to income increases financial risk."
+        ),
     }
+
     sentences  = []
     tips       = []
     sorted_idx = np.argsort(np.abs(shap_values))[::-1]
-    for idx in sorted_idx[:4]:
+
+    for idx in sorted_idx[:5]:
         fname    = feature_names[idx] if idx < len(feature_names) else ""
         positive = shap_values[idx] > 0
         if fname in templates:
             sentences.append(templates[fname][0 if positive else 1])
             if not positive:
                 tips.append(
-                    f"Improve your {fname.replace('_',' ')} to increase your score next time."
+                    f"Improve your {fname.replace('_',' ')} to increase your score."
                 )
+
     generic_tips = [
         "Pay all utility bills on time for at least 6 consecutive months.",
         "Add a guarantor with a strong repayment history to your application.",
         "Maintain your current address for at least 12 months before reapplying.",
+        "Start a monthly savings habit — even small amounts improve your score.",
+        "Avoid gambling or betting activities completely.",
+        "Consider taking basic health or life insurance.",
     ]
     while len(tips) < 3:
         tips.append(generic_tips[len(tips) % len(generic_tips)])
+
     return {"sentences": sentences, "tips": tips[:3]}
 
 
@@ -306,59 +361,130 @@ def predict(
             req.location_stability,
             req.months_at_address
         )
-        b_emb       = behavior_model(b_tensor)
-        g_out       = social_model(node_feats, edge_idx)
-        g_emb       = g_out[0:1]
-        raw         = fusion_model(b_emb, g_emb)
-        score_float = float(raw.item())
+        b_emb  = behavior_model(b_tensor)
+        g_out  = social_model(node_feats, edge_idx)
+        g_emb  = g_out[0:1]
 
-        
+    # ── Education encoding ──────────────────────────────────────────
+    edu_map = {
+        'illiterate': 0.0, 'primary': 0.2, 'secondary': 0.5,
+        'graduate': 0.8, 'postgraduate': 1.0
+    }
+    edu_score = edu_map.get(req.education_level, 0.3)
 
-        # Compute SHAP-based score instead of model output
-        elec_reg_temp  = sum(m.electricity_paid for m in req.monthly_behavior) / len(req.monthly_behavior)
-        avg_trust_temp = float(np.mean([r.trust_score for r in req.social_references]))
+    # ── Employment encoding ─────────────────────────────────────────
+    emp_map = {
+        'salaried': 1.0, 'self_employed': 0.8, 'farmer': 0.6,
+        'daily_wage': 0.4, 'unemployed': 0.0
+    }
+    emp_score = emp_map.get(req.employment_type, 0.3)
 
-        fv_temp = np.array([
-            req.monthly_behavior[-1].recharge_amount    / 1000.0,
-            req.monthly_behavior[-1].recharge_frequency / 4.0,
-            elec_reg_temp,
-            req.monthly_behavior[-1].grocery_spend      / 10000.0,
-            req.location_stability                       / 100.0,
-            avg_trust_temp,
-        ])
-        baseline_temp     = np.array([0.3, 0.25, 0.5, 0.3, 0.5, 0.5])
-        weights_temp      = np.array([12.0, 6.0, 22.0, 8.0, 14.0, 20.0])
-        shap_sum          = float(np.sum((fv_temp - baseline_temp) * weights_temp))
-       
-        # Map shap_sum to score 0-100
-        # shap_sum ranges roughly from -74 to +74
-        # Map to 0-100
-        raw_score = (shap_sum + 74) / 148 * 100
-        score     = max(2, min(98, round(raw_score)))
-        
-    risk_tier = "Low" if score >= 65 else "Medium" if score >= 40 else "High"
+    # ── Gambling encoding ───────────────────────────────────────────
+    gamble_map = {'never': 0.0, 'rarely': 0.3, 'sometimes': 0.6, 'regularly': 1.0}
+    gamble_score = gamble_map.get(req.gambling_frequency, 0.0)
 
-    elec_regularity = sum(
-        m.electricity_paid for m in req.monthly_behavior
-    ) / len(req.monthly_behavior)
+    # ── Investment encoding ─────────────────────────────────────────
+    invest_map = {
+        'none': 0.0, 'gold': 0.4, 'fd': 0.6,
+        'mutual_fund': 0.8, 'property': 1.0
+    }
+    invest_score = invest_map.get(req.investment_type, 0.0)
+
+    # ── Derived ratios ──────────────────────────────────────────────
+    income_expense_ratio = min(
+        req.monthly_income / max(req.monthly_expenditure, 1), 3.0
+    ) / 3.0
+
+    savings_rate = min(
+        req.monthly_savings / max(req.monthly_income, 1), 1.0
+    )
+
+    emi_burden = min(
+        req.existing_loan_emi / max(req.monthly_income, 1), 1.0
+    ) if req.has_existing_loans else 0.0
+
+    upi_score = min(req.upi_transaction_amount / 10000.0, 1.0) if req.uses_upi else 0.0
+
+    # ── Electricity regularity ──────────────────────────────────────
+    elec_reg  = sum(m.electricity_paid for m in req.monthly_behavior) / len(req.monthly_behavior)
     avg_trust = float(np.mean([r.trust_score for r in req.social_references]))
+
+    # ── Feature vector (18 features) ───────────────────────────────
+    feature_names = [
+        "recharge_amount",
+        "recharge_frequency",
+        "electricity_regularity",
+        "grocery_spend",
+        "location_stability",
+        "social_trust",
+        "income_expense_ratio",
+        "savings_rate",
+        "employment_type",
+        "education_level",
+        "emi_burden",
+        "investment_activity",
+        "gambling_behavior",
+        "upi_usage",
+        "has_insurance",
+        "owns_assets",
+        "alcohol_tobacco",
+        "dependents_ratio",
+    ]
 
     feature_vector = np.array([
         req.monthly_behavior[-1].recharge_amount    / 1000.0,
         req.monthly_behavior[-1].recharge_frequency / 4.0,
-        elec_regularity,
+        elec_reg,
         req.monthly_behavior[-1].grocery_spend      / 10000.0,
         req.location_stability                       / 100.0,
         avg_trust,
+        income_expense_ratio,
+        savings_rate,
+        emp_score,
+        edu_score,
+        1.0 - emi_burden,           # lower burden = better
+        invest_score if req.does_investment else 0.0,
+        1.0 - gamble_score,         # no gambling = better
+        upi_score,
+        1.0 if req.has_insurance else 0.0,
+        1.0 if (req.owns_property or req.owns_vehicle) else 0.0,
+        1.0 - min(req.alcohol_tobacco_spend / 5000.0, 1.0),
+        1.0 - min(req.dependents / 6.0, 1.0),
     ])
-    feature_names = [
-        "recharge_amount", "recharge_frequency",
-        "electricity_regularity", "grocery_spend",
-        "location_stability", "social_trust",
-    ]
-    baseline     = np.array([0.3,  0.25, 0.5,  0.3,  0.5,  0.5 ])
-    shap_weights = np.array([12.0, 6.0,  22.0, 8.0,  14.0, 20.0])
-    shap_values  = (feature_vector - baseline) * shap_weights
+
+    baseline = np.array([
+        0.30, 0.25, 0.50, 0.30, 0.50, 0.50,
+        0.50, 0.20, 0.50, 0.50, 0.70, 0.20,
+        0.80, 0.30, 0.50, 0.30, 0.70, 0.70,
+    ])
+
+    shap_weights = np.array([
+        8.0,   # recharge_amount
+        4.0,   # recharge_frequency
+        18.0,  # electricity_regularity
+        6.0,   # grocery_spend
+        10.0,  # location_stability
+        16.0,  # social_trust
+        18.0,  # income_expense_ratio
+        14.0,  # savings_rate
+        12.0,  # employment_type
+        6.0,   # education_level
+        10.0,  # emi_burden
+        8.0,   # investment_activity
+        -14.0, # gambling_behavior     (negative)
+        6.0,   # upi_usage
+        5.0,   # has_insurance
+        5.0,   # owns_assets
+        -8.0,  # alcohol_tobacco       (negative)
+        -4.0,  # dependents_ratio      (negative)
+    ])
+
+    shap_values = (feature_vector - baseline) * shap_weights
+    shap_sum    = float(np.sum(shap_values))
+    raw_score   = (shap_sum + 148) / 296 * 100
+    score       = max(2, min(98, round(raw_score)))
+
+    risk_tier = "Low" if score >= 65 else "Medium" if score >= 40 else "High"
 
     expl = generate_explanation(shap_values, feature_names)
 
@@ -372,7 +498,6 @@ def predict(
     db.add(app_record)
     db.commit()
 
-    # Send email
     try:
         import threading
         threading.Thread(
@@ -388,7 +513,7 @@ def predict(
         ).start()
     except Exception as e:
         print(f"Email thread error: {e}")
-        
+
     return {
         "score":         score,
         "risk_tier":     risk_tier,
@@ -672,12 +797,24 @@ def get_eda_stats(
     ]
 
     feature_importance = [
-        {"feature": "Electricity Regularity", "importance": 22.0, "color": "cyan"   },
-        {"feature": "Social Trust",            "importance": 20.0, "color": "purple" },
-        {"feature": "Location Stability",      "importance": 14.0, "color": "green"  },
-        {"feature": "Recharge Amount",         "importance": 12.0, "color": "amber"  },
-        {"feature": "Grocery Spend",           "importance": 8.0,  "color": "pink"   },
-        {"feature": "Recharge Frequency",      "importance": 6.0,  "color": "teal"   },
+        {"feature": "Electricity Regularity", "importance": 18.0, "color": "cyan"   },
+        {"feature": "Income/Expense Ratio",   "importance": 18.0, "color": "blue"   },
+        {"feature": "Social Trust",            "importance": 16.0, "color": "purple" },
+        {"feature": "Savings Rate",            "importance": 14.0, "color": "green"  },
+        {"feature": "Gambling Behavior",       "importance": 14.0, "color": "red"    },
+        {"feature": "Employment Type",         "importance": 12.0, "color": "orange" },
+        {"feature": "Location Stability",      "importance": 10.0, "color": "teal"   },
+        {"feature": "EMI Burden",              "importance": 10.0, "color": "yellow" },
+        {"feature": "Recharge Amount",         "importance": 8.0,  "color": "amber"  },
+        {"feature": "Investment Activity",     "importance": 8.0,  "color": "indigo" },
+        {"feature": "Alcohol/Tobacco",         "importance": 8.0,  "color": "pink"   },
+        {"feature": "Grocery Spend",           "importance": 6.0,  "color": "lime"   },
+        {"feature": "UPI Usage",               "importance": 6.0,  "color": "cyan"   },
+        {"feature": "Education Level",         "importance": 6.0,  "color": "violet" },
+        {"feature": "Recharge Frequency",      "importance": 4.0,  "color": "teal"   },
+        {"feature": "Has Insurance",           "importance": 5.0,  "color": "sky"    },
+        {"feature": "Owns Assets",             "importance": 5.0,  "color": "emerald"},
+        {"feature": "Dependents Ratio",        "importance": 4.0,  "color": "rose"   },
     ]
 
     model_metrics = [
@@ -825,9 +962,6 @@ async def batch_predict(
 
     for i, row in enumerate(reader):
         try:
-            # Parse row — expected columns:
-            # recharge_amount, recharge_frequency, grocery_spend,
-            # electricity_paid, location_stability, months_at_address, trust_score
             ra   = float(row.get('recharge_amount',   300))
             rf   = float(row.get('recharge_frequency', 2))
             gs   = float(row.get('grocery_spend',     3000))
@@ -837,7 +971,6 @@ async def batch_predict(
             ts   = float(row.get('trust_score',        0.7))
             name = row.get('name', f'Applicant {i+1}')
 
-            # Build tensors
             monthly_seq = [[ra/1000, rf/4, ep, gs/10000]] * 12
             b_tensor    = torch.tensor([monthly_seq], dtype=torch.float32)
 
@@ -856,14 +989,10 @@ async def batch_predict(
                 raw         = fusion_model(b_emb, g_emb)
                 score_float = float(raw.item())
 
-            # Apply score spreading to avoid 0/100 extremes
-            # Map sigmoid output to more realistic range 5-95
                 if score_float > 0.5:
-                 # Scale 0.5-1.0 to 50-95
-                 spread = 50 + (score_float - 0.5) * 90
+                    spread = 50 + (score_float - 0.5) * 90
                 else:
-                     # Scale 0.0-0.5 to 5-50
-                 spread = 5 + score_float * 90
+                    spread = 5 + score_float * 90
 
                 score = max(0, min(100, round(spread)))
 
@@ -892,14 +1021,14 @@ async def batch_predict(
     avg    = round(sum(r['score'] for r in results) / len(results)) if results else 0
 
     return {
-        "total":    len(results),
-        "errors":   len(errors),
-        "avg_score":avg,
-        "low_risk": low,
-        "medium_risk": medium,
-        "high_risk":   high,
+        "total":         len(results),
+        "errors":        len(errors),
+        "avg_score":     avg,
+        "low_risk":      low,
+        "medium_risk":   medium,
+        "high_risk":     high,
         "approval_rate": round(low/len(results)*100) if results else 0,
-        "results":  results,
+        "results":       results,
         "error_details": errors,
     }
 

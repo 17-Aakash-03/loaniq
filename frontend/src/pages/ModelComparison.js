@@ -32,7 +32,7 @@ export default function ModelComparison() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { navigate('/'); return; }
-    axios.get('https://loaniq-backend-6dmd.onrender.com/model/comparison', {
+    axios.get('http://127.0.0.1:8000/model/comparison', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => { setData(res.data); setMounted(true); })
@@ -505,4 +505,5 @@ export default function ModelComparison() {
     </div>
   );
 }
+
 
